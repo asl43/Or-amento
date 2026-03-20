@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrcaPro — Sistema de Orçamento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --card: #ffffff;
+    --primary: #1a1a2e;
+    --accent: #e8b84b;
+    --accent2: #2d6a4f;
+    --text: #1a1a2e;
+    --muted: #7a7a8c;
+    --border: #e2e0d8;
+    --danger: #c0392b;
+    --success: #27ae60;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .app-header {
+    background: var(--primary); color: white;
+    padding: 16px 28px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+  }
+  .app-header h1 { font-family: 'Playfair Display', serif; font-size: 1.4rem; }
+  .app-header h1 span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-tabs { display: flex; gap: 5px; }
+  .tab-btn {
+    background: transparent; border: none; color: rgba(255,255,255,0.5);
+    padding: 7px 16px; border-radius: 8px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500; transition: all 0.2s;
+  }
+  .tab-btn.active { background: var(--accent); color: var(--primary); }
+  .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.1); color: white; }
+
+  /* SYNC STATUS */
+  .sync-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; padding: 5px 12px; border-radius: 20px;
+    background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .sync-badge:hover { background: rgba(255,255,255,0.2); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #aaa; transition: background 0.3s; }
+  .sync-dot.ok { background: #4caf50; }
+  .sync-dot.erro { background: #f44336; }
+  .sync-dot.sync { background: var(--accent); animation: pulsar 0.8s infinite; }
+  @keyframes pulsar { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  /* LAYOUT */
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px 18px; }
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  /* CARDS */
+  .card { background: var(--card); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); margin-bottom: 18px; border: 1px solid var(--border); }
+  .card-title {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .app-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+    .header-tabs { flex-wrap: wrap; }
+  }
+
+  /* INPUTS */
+  label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select, textarea {
+    width: 100%; padding: 9px 13px; border: 1.5px solid var(--border); border-radius: 9px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.93rem; color: var(--text);
+    background: var(--bg); transition: border 0.2s, box-shadow 0.2s; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,184,75,0.15); }
+  textarea { resize: vertical; min-height: 58px; }
+  .input-group { margin-bottom: 2px; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: 9px; font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover:not(:disabled) { background: #2d2d4e; transform: translateY(-1px); }
+  .btn-accent { background: var(--accent); color: var(--primary); }
+  .btn-accent:hover:not(:disabled) { background: #d4a83a; transform: translateY(-1px); }
+  .btn-success { background: var(--accent2); color: white; }
+  .btn-success:hover:not(:disabled) { background: #245a41; transform: translateY(-1px); }
+  .btn-danger { background: #fef0ef; color: var(--danger); border: 1px solid #f5c6c2; }
+  .btn-danger:hover:not(:disabled) { background: var(--danger); color: white; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .btn-sm { padding: 5px 11px; font-size: 0.78rem; }
+  .btn-row { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 6px; }
+
+  /* TABELA */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  thead th { background: var(--primary); color: white; padding: 9px 11px; text-align: left; font-weight: 600; font-size: 0.76rem; letter-spacing: 0.5px; }
+  thead th:first-child { border-radius: 8px 0 0 0; }
+  thead th:last-child { border-radius: 0 8px 0 0; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:hover { background: #faf9f5; }
+  td { padding: 9px 11px; vertical-align: middle; }
+  td img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+
+  /* TOTALS BOX */
+  .totals-box { background: var(--primary); color: white; border-radius: var(--radius); padding: 18px 22px; margin-top: 14px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 0.88rem; }
+  .totals-row.final { font-size: 1.25rem; font-weight: 700; border-top: 1px solid rgba(255,255,255,0.15); margin-top: 8px; padding-top: 9px; }
+  .totals-row .label { opacity: 0.65; }
+  .totals-row.final .value { color: var(--accent); }
+
+  /* HISTÓRICO */
+  .hist-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px; border-radius: 10px; background: var(--bg);
+    border: 1px solid var(--border); margin-bottom: 9px; transition: all 0.2s;
+  }
+  .hist-item:hover { border-color: var(--accent); background: #fffef8; }
+  .hist-num { font-size: 0.68rem; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+  .hist-cliente { font-weight: 600; font-size: 0.97rem; }
+  .hist-data { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .hist-total { font-size: 1.05rem; font-weight: 700; color: var(--accent2); }
+  .status-badge {
+    font-size: 0.68rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .status-Pendente  { background: #fff3cd; color: #856404; }
+  .status-Aprovado  { background: #d1e7dd; color: #0a3622; }
+  .status-Recusado  { background: #f8d7da; color: #842029; }
+  .status-Enviado   { background: #cff4fc; color: #055160; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat-card { background: var(--card); border-radius: var(--radius); padding: 18px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 3px; }
+  .stat-card.accent .stat-value { color: var(--accent2); }
+
+  /* PROD */
+  .prod-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 15px; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; margin-bottom: 7px; }
+  .prod-nome { font-weight: 600; }
+  .prod-preco { color: var(--accent2); font-weight: 700; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: var(--radius); padding: 26px; width: 90%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: fadeIn 0.2s ease; }
+  .modal h3 { font-family: 'Playfair Display', serif; margin-bottom: 14px; }
+
+  /* CONFIGURAÇÕES */
+  .config-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .config-row:last-child { border-bottom: none; }
+  .config-label { font-weight: 600; font-size: 0.9rem; }
+  .config-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+  /* ORCAMENTO NUM */
+  .orcamento-num { background: var(--accent); color: var(--primary); font-weight: 700; font-size: 0.78rem; padding: 4px 12px; border-radius: 20px; letter-spacing: 1px; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 26px; right: 26px; background: var(--primary); color: white; padding: 13px 20px; border-radius: 10px; font-size: 0.88rem; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 9999; opacity: 0; transform: translateY(14px); transition: all 0.3s; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  /* SPINNER */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* SHEETS URL BOX */
+  .sheets-link { display: flex; align-items: center; gap: 10px; background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 9px; padding: 10px 14px; font-size: 0.83rem; color: var(--accent2); }
+  .sheets-link a { color: var(--accent2); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>Orça<span>Pro</span></h1>
+  <div class="header-right">
+    <div class="sync-badge" onclick="sincronizarTudo()" title="Clique para sincronizar agora">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel">Sheets</span>
+    </div>
+    <div class="header-tabs">
+      <button class="tab-btn active" onclick="showPage('orcamento-page', this)">📄 Orçamento</button>
+      <button class="tab-btn" onclick="showPage('historico-page', this)">📂 Histórico</button>
+      <button class="tab-btn" onclick="showPage('produtos-page', this)">📦 Produtos</button>
+      <button class="tab-btn" onclick="showPage('config-page', this)">⚙️ Config</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- MODAL LIMPAR -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>🗑️ Limpar orçamento?</h3>
+    <p style="color:var(--muted);margin-bottom:18px;">Todos os itens serão removidos. Esta ação não pode ser desfeita.</p>
+    <div class="btn-row">
+      <button class="btn btn-danger" onclick="confirmarLimpar()">Sim, limpar</button>
+      <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ===== ORÇAMENTO ===== -->
+  <div class="page active" id="orcamento-page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;">Novo Orçamento</h2>
+        <p style="color:var(--muted);font-size:0.85rem;">Preencha os dados abaixo</p>
+      </div>
+      <span class="orcamento-num" id="numOrcamento">ORC #001</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Informações</div>
+      <div class="grid-3">
+        <div class="input-group"><label>Nome da Loja</label><input id="loja" placeholder="Ex: Materiais Silva" oninput="salvarConfigLocal()"></div>
+        <div class="input-group"><label>Responsável</label><input id="usuario" placeholder="Seu nome" oninput="salvarConfigLocal()"></div>
+        <div class="input-group"><label>Data</label><input type="date" id="data"></div>
+      </div>
+      <div class="input-group" style="margin-top:11px;"><label>Cliente</label><input id="cliente" placeholder="Nome completo do cliente"></div>
+      <div class="input-group" style="margin-top:11px;"><label>Observação / Condições</label><textarea id="observacao" placeholder="Ex: Válido por 7 dias. Pagamento à vista ou parcelado."></textarea></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Adicionar Item</div>
+      <div class="grid-3">
+        <div class="input-group"><label>Produto</label><select id="listaProdutos"></select></div>
+        <div class="input-group"><label>Preço Unitário (R$)</label><input type="number" id="preco" placeholder="0,00" step="0.01" min="0"></div>
+        <div class="input-group"><label>Quantidade</label><input type="number" id="qtd" value="1" min="1"></div>
+      </div>
+      <div class="grid-2" style="margin-top:8px;">
+        <div class="input-group"><label>Descrição extra (opcional)</label><textarea id="descricaoExtra" placeholder="Detalhes adicionais..." style="min-height:42px;"></textarea></div>
+        <div class="input-group"><label>Imagem (opcional)</label><input type="file" id="imagem" accept="image/*"></div>
+      </div>
+      <div class="btn-row" style="margin-top:11px;">
+        <button class="btn btn-accent" onclick="addItem()">➕ Adicionar Item</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Itens do Orçamento</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Produto</th><th>Descrição</th><th>Img</th>
+            <th>Unit. (R$)</th><th>Qtd</th><th>Total (R$)</th><th></th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="totals-box">
+        <div class="totals-row"><span class="label">Subtotal</span><span>R$ <span id="subtotal">0,00</span></span></div>
+        <div class="totals-row" style="align-items:center;">
+          <span class="label">Desconto (R$)</span>
+          <input type="number" id="desconto" value="0" step="0.01" min="0"
+            style="width:110px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;padding:5px 9px;border-radius:7px;font-size:0.88rem;"
+            oninput="calcular()">
+        </div>
+        <div class="totals-row final"><span class="label">TOTAL</span><span class="value">R$ <span id="total">0,00</span></span></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-success" id="btnSalvar" onclick="salvar()">💾 Salvar + Sincronizar</button>
+      <button class="btn btn-primary" onclick="gerarPDF()">📄 Gerar PDF</button>
+      <button class="btn btn-ghost" onclick="enviarWhats()">📲 WhatsApp</button>
+      <button class="btn btn-ghost" onclick="abrirModal()">🗑️ Limpar</button>
+    </div>
+  </div>
+
+  <!-- ===== HISTÓRICO ===== -->
+  <div class="page" id="historico-page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;">Histórico</h2>
+        <p style="color:var(--muted);font-size:0.85rem;">Sincronizado com Google Sheets</p>
+      </div>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn btn-ghost btn-sm" onclick="sincronizarTudo()">🔄 Atualizar</button>
+        <button class="btn btn-danger btn-sm" onclick="limparHistorico()">🗑️ Limpar tudo</button>
+      </div>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="card"><div id="historico"></div></div>
+  </div>
+
+  <!-- ===== PRODUTOS ===== -->
+  <div class="page" id="produtos-page">
+    <div style="margin-bottom:18px;">
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;">Produtos</h2>
+      <p style="color:var(--muted);font-size:0.85rem;">Gerenciado no Google Sheets</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Adicionar Produto</div>
+      <div class="grid-2">
+        <div class="input-group"><label>Nome do Produto</label><input id="novoProdNome" placeholder="Ex: Cano PVC 100mm"></div>
+        <div class="input-group"><label>Preço Padrão (R$)</label><input type="number" id="novoProdPreco" placeholder="0,00" step="0.01" min="0"></div>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-accent" onclick="adicionarProduto()">➕ Adicionar e Sincronizar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Catálogo (<span id="totalProd">0</span> produtos)</div>
+      <div id="listaCatalogo"></div>
+    </div>
+  </div>
+
+  <!-- ===== CONFIG ===== -->
+  <div class="page" id="config-page">
+    <div style="margin-bottom:18px;">
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;">Configurações</h2>
+      <p style="color:var(--muted);font-size:0.85rem;">Integração com Google Sheets</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">URL do Apps Script (Web App)</div>
+      <div class="input-group">
+        <label>Cole aqui a URL do seu Web App (após publicar o Apps Script)</label>
+        <input id="cfgScriptUrl" placeholder="https://script.google.com/macros/s/XXXX/exec" oninput="salvarScriptUrl()">
+      </div>
+      <div style="margin-top:12px;" class="sheets-link">
+        📊 Planilha vinculada:
+        <a href="https://docs.google.com/spreadsheets/d/1MQnunTuuYIopVgvO4Mro5k_tnEoZsTqFmEks1BPeGi4/edit" target="_blank">
+          Abrir no Google Sheets ↗
+        </a>
+      </div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-accent" onclick="testarConexao()">🔌 Testar Conexão</button>
+        <button class="btn btn-success" onclick="sincronizarTudo()">🔄 Sync Completo</button>
+        <button class="btn btn-ghost" onclick="executarSetupRemoto()">🛠️ Setup Planilha</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Como configurar</div>
+      <ol style="line-height:2;color:var(--muted);font-size:0.88rem;padding-left:20px;">
+        <li>Abra a planilha vinculada acima</li>
+        <li>Clique em <strong style="color:var(--text);">Extensões → Apps Script</strong></li>
+        <li>Cole o código do arquivo <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">Code.gs</code> fornecido</li>
+        <li>Clique em <strong style="color:var(--text);">Executar → executarSetup</strong> (1ª vez apenas)</li>
+        <li>Vá em <strong style="color:var(--text);">Implantar → Nova implantação</strong></li>
+        <li>Tipo: <strong style="color:var(--text);">App da Web</strong> — Acesso: <strong style="color:var(--text);">Qualquer pessoa</strong></li>
+        <li>Copie a URL gerada e cole no campo acima</li>
+        <li>Clique em <strong style="color:var(--text);">Testar Conexão</strong></li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+//  ESTADO GLOBAL
+// ============================================================
+let itens    = [];
+let produtos = JSON.parse(localStorage.getItem('produtos')) || [
+  {id: 1, nome:'Tubo 100mm',  preco: 50},
+  {id: 2, nome:'Joelho 75mm', preco:  7},
+  {id: 3, nome:'Ralo 100mm',  preco: 15},
+];
+let numOrcamento = parseInt(localStorage.getItem('numOrcamento')) || 1;
+let SCRIPT_URL   = localStorage.getItem('scriptUrl') || '';
+let syncAtivo    = false;
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  const config = JSON.parse(localStorage.getItem('config')) || {};
+  if (config.loja)    document.getElementById('loja').value    = config.loja;
+  if (config.usuario) document.getElementById('usuario').value = config.usuario;
+  document.getElementById('data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('numOrcamento').textContent = `ORC #${String(numOrcamento).padStart(3,'0')}`;
+
+  if (SCRIPT_URL) document.getElementById('cfgScriptUrl').value = SCRIPT_URL;
+
+  carregarProdutos();
+  renderCatalogo();
+  carregarHistoricoLocal();
+  renderTabela();
+
+  // Ativa listener do select de produtos
+  document.getElementById('listaProdutos').addEventListener('change', function() {
+    document.getElementById('preco').value = this.selectedOptions[0]?.dataset.preco || '';
+  });
+
+  // Sync inicial se URL configurada
+  if (SCRIPT_URL) {
+    setTimeout(() => sincronizarTudo(), 1000);
+  } else {
+    setSyncStatus('erro', 'Sem URL');
+  }
+}
+
+// ============================================================
+//  NAVEGAÇÃO
+// ============================================================
+function showPage(pageId, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  btn.classList.add('active');
+  if (pageId === 'historico-page') carregarHistoricoLocal();
+  if (pageId === 'produtos-page')  renderCatalogo();
+}
+
+// ============================================================
+//  API — SHEETS
+// ============================================================
+async function api(params) {
+  if (!SCRIPT_URL) { toast('⚠️ Configure a URL do Apps Script primeiro!'); return null; }
+  try {
+    setSyncStatus('sync', 'Sync...');
+    const url = `${SCRIPT_URL}?acao=${params.acao}&${new URLSearchParams(params).toString()}`;
+    const res  = await fetch(url, { redirect: 'follow' });
+    const data = await res.json();
+    setSyncStatus(data.ok ? 'ok' : 'erro', data.ok ? 'Sheets ✓' : 'Erro');
+    return data;
+  } catch (err) {
+    setSyncStatus('erro', 'Offline');
+    console.error('API erro:', err);
+    return null;
+  }
+}
+
+async function apiPost(body) {
+  if (!SCRIPT_URL) { toast('⚠️ Configure a URL do Apps Script primeiro!'); return null; }
+  try {
+    setSyncStatus('sync', 'Sync...');
+    const res  = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'text/plain' }, // evita preflight CORS
+      redirect: 'follow'
+    });
+    const data = await res.json();
+    setSyncStatus(data.ok ? 'ok' : 'erro', data.ok ? 'Sheets ✓' : 'Erro');
+    return data;
+  } catch (err) {
+    setSyncStatus('erro', 'Offline');
+    console.error('API POST erro:', err);
+    return null;
+  }
+}
+
+function setSyncStatus(estado, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = `sync-dot ${estado}`;
+  lbl.textContent = label;
+}
+
+// ============================================================
+//  SYNC COMPLETO (bidirecional)
+// ============================================================
+async function sincronizarTudo() {
+  if (syncAtivo) return;
+  syncAtivo = true;
+  setSyncStatus('sync', 'Sync...');
+
+  const res = await api({ acao: 'syncCompleto' });
+  if (!res || !res.ok) {
+    setSyncStatus('erro', 'Falha');
+    syncAtivo = false;
+    return;
+  }
+
+  const { orcamentos, produtos: prodSheets, config, stats } = res.data;
+
+  // Atualizar produtos vindos da planilha
+  if (prodSheets && prodSheets.length > 0) {
+    produtos = prodSheets.map(p => ({
+      id:    p.ID    || p.id,
+      nome:  p.Nome  || p.nome,
+      preco: parseFloat(p.Preco || p.preco) || 0
+    }));
+    localStorage.setItem('produtos', JSON.stringify(produtos));
+    carregarProdutos();
+    renderCatalogo();
+  }
+
+  // Atualizar config vinda da planilha
+  if (config) {
+    const local = JSON.parse(localStorage.getItem('config')) || {};
+    if (config.loja    && !local.loja)    { document.getElementById('loja').value    = config.loja;    local.loja    = config.loja; }
+    if (config.usuario && !local.usuario) { document.getElementById('usuario').value = config.usuario; local.usuario = config.usuario; }
+    localStorage.setItem('config', JSON.stringify(local));
+  }
+
+  // Atualizar histórico
+  if (orcamentos) {
+    const hist = orcamentos.map(o => ({
+      num:        o.Num        || o.num,
+      cliente:    o.Cliente    || o.cliente    || '',
+      loja:       o.Loja       || o.loja       || '',
+      usuario:    o.Responsavel|| o.usuario    || '',
+      total:      String(o.Total    || o.total    || '0').replace('.', ','),
+      subtotal:   String(o.Subtotal || o.subtotal || '0').replace('.', ','),
+      desconto:   String(o.Desconto || o.desconto || '0'),
+      observacao: o.Observacao || o.observacao || '',
+      status:     o.Status     || o.status     || 'Pendente',
+      data:       o.Criado_Em  || o.data       || '',
+      itens:      []
+    }));
+    localStorage.setItem('historico', JSON.stringify(hist));
+    // Atualiza contador de orçamentos
+    if (hist.length > 0) {
+      const maxNum = Math.max(...hist.map(h => parseInt(h.num) || 0));
+      if (maxNum >= numOrcamento) {
+        numOrcamento = maxNum + 1;
+        localStorage.setItem('numOrcamento', numOrcamento);
+        document.getElementById('numOrcamento').textContent = `ORC #${String(numOrcamento).padStart(3,'0')}`;
+      }
+    }
+  }
+
+  // Atualizar stats
+  if (stats) renderStats(stats);
+
+  carregarHistoricoLocal();
+  setSyncStatus('ok', 'Sheets ✓');
+  toast('🔄 Sincronizado com Google Sheets!');
+  syncAtivo = false;
+}
+
+// ============================================================
+//  CONFIG LOCAL
+// ============================================================
+function salvarConfigLocal() {
+  localStorage.setItem('config', JSON.stringify({
+    loja:    document.getElementById('loja').value,
+    usuario: document.getElementById('usuario').value
+  }));
+}
+
+function salvarScriptUrl() {
+  SCRIPT_URL = document.getElementById('cfgScriptUrl').value.trim();
+  localStorage.setItem('scriptUrl', SCRIPT_URL);
+}
+
+async function testarConexao() {
+  if (!SCRIPT_URL) { toast('⚠️ Informe a URL do Apps Script'); return; }
+  toast('🔌 Testando conexão...');
+  const res = await api({ acao: 'getConfig' });
+  if (res && res.ok) {
+    toast('✅ Conexão OK! Planilha respondendo.');
+  } else {
+    toast('❌ Falha na conexão. Verifique a URL e as permissões.');
+  }
+}
+
+async function executarSetupRemoto() {
+  toast('🛠️ Executando setup da planilha...');
+  // Setup é executado diretamente pelo Apps Script via função executarSetup()
+  toast('ℹ️ Execute a função executarSetup() no editor do Apps Script');
+}
+
+// ============================================================
+//  PRODUTOS
+// ============================================================
+function carregarProdutos() {
+  const select = document.getElementById('listaProdutos');
+  select.innerHTML = '';
+  produtos.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.nome;
+    opt.textContent = p.nome;
+    opt.dataset.preco = p.preco;
+    select.appendChild(opt);
+  });
+  if (produtos.length > 0) {
+    document.getElementById('preco').value = produtos[0].preco;
+  }
+}
+
+async function adicionarProduto() {
+  const nome  = document.getElementById('novoProdNome').value.trim();
+  const preco = parseFloat(document.getElementById('novoProdPreco').value);
+  if (!nome || isNaN(preco)) { toast('⚠️ Preencha nome e preço'); return; }
+
+  const id = Date.now();
+  const prod = { id, nome, preco };
+  produtos.push(prod);
+  localStorage.setItem('produtos', JSON.stringify(produtos));
+  carregarProdutos();
+  renderCatalogo();
+
+  // Enviar para Sheets
+  const res = await apiPost({ acao: 'salvarProduto', ...prod });
+  if (res && res.ok) toast('✅ Produto salvo na planilha!');
+  else toast('✅ Produto salvo localmente (sync pendente)');
+
+  document.getElementById('novoProdNome').value  = '';
+  document.getElementById('novoProdPreco').value = '';
+}
+
+async function removerProduto(id) {
+  produtos = produtos.filter(p => String(p.id) !== String(id));
+  localStorage.setItem('produtos', JSON.stringify(produtos));
+  carregarProdutos();
+  renderCatalogo();
+
+  const res = await apiPost({ acao: 'excluirProduto', id });
+  toast(res && res.ok ? '🗑️ Produto removido da planilha' : '🗑️ Produto removido localmente');
+}
+
+function renderCatalogo() {
+  const div = document.getElementById('listaCatalogo');
+  document.getElementById('totalProd').textContent = produtos.length;
+  if (produtos.length === 0) {
+    div.innerHTML = '<p style="color:var(--muted);text-align:center;padding:22px;">Nenhum produto cadastrado.</p>';
+    return;
+  }
+  div.innerHTML = produtos.map(p => `
+    <div class="prod-item">
+      <div><div class="prod-nome">${p.nome}</div></div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="prod-preco">R$ ${parseFloat(p.preco).toFixed(2)}</span>
+        <button class="btn btn-danger btn-sm" onclick="removerProduto(${p.id})">❌</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+//  ITENS DO ORÇAMENTO
+// ============================================================
+function addItem() {
+  const nome     = document.getElementById('listaProdutos').value;
+  const preco    = parseFloat(document.getElementById('preco').value);
+  const qtd      = parseInt(document.getElementById('qtd').value);
+  const descricao= document.getElementById('descricaoExtra').value.trim();
+  const file     = document.getElementById('imagem').files[0];
+
+  if (!nome || isNaN(preco) || preco <= 0 || !qtd || qtd <= 0) {
+    toast('⚠️ Preencha produto, preço e quantidade'); return;
+  }
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      itens.push({ nome, preco, qtd, descricao, img: e.target.result });
+      renderTabela();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    itens.push({ nome, preco, qtd, descricao, img: null });
+    renderTabela();
+  }
+  document.getElementById('descricaoExtra').value = '';
+  document.getElementById('imagem').value = '';
+  document.getElementById('qtd').value    = 1;
+}
+
+function renderTabela() {
+  const tbody = document.getElementById('tbody');
+  if (itens.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px;">Nenhum item adicionado.</td></tr>';
+    calcular(); return;
+  }
+  tbody.innerHTML = itens.map((item, idx) => `
+    <tr>
+      <td style="color:var(--muted);font-size:0.78rem;font-weight:600;">${idx+1}</td>
+      <td style="font-weight:600;">${item.nome}</td>
+      <td style="color:var(--muted);font-size:0.83rem;">${item.descricao || '—'}</td>
+      <td>${item.img ? `<img src="${item.img}">` : '<span style="color:var(--muted);">—</span>'}</td>
+      <td>R$ ${item.preco.toFixed(2)}</td>
+      <td style="font-weight:600;">${item.qtd}</td>
+      <td style="font-weight:700;color:var(--accent2);">R$ ${(item.preco*item.qtd).toFixed(2)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removerItem(${idx})">❌</button></td>
+    </tr>
+  `).join('');
+  calcular();
+}
+
+function removerItem(i) { itens.splice(i, 1); renderTabela(); }
+
+function calcular() {
+  const subtotal = itens.reduce((a, b) => a + (b.preco * b.qtd), 0);
+  const desc     = parseFloat(document.getElementById('desconto').value) || 0;
+  const total    = Math.max(0, subtotal - desc);
+  document.getElementById('subtotal').textContent = subtotal.toFixed(2).replace('.', ',');
+  document.getElementById('total').textContent    = total.toFixed(2).replace('.', ',');
+}
+
+// ============================================================
+//  SALVAR + SINCRONIZAR
+// ============================================================
+async function salvar() {
+  const cliente = document.getElementById('cliente').value.trim();
+  if (!cliente) { toast('⚠️ Informe o nome do cliente'); return; }
+  if (itens.length === 0) { toast('⚠️ Adicione pelo menos um item'); return; }
+
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Salvando...';
+
+  const payload = {
+    acao:       'salvarOrcamento',
+    num:        numOrcamento,
+    cliente,
+    loja:       document.getElementById('loja').value,
+    usuario:    document.getElementById('usuario').value,
+    data:       document.getElementById('data').value,
+    subtotal:   document.getElementById('subtotal').textContent,
+    desconto:   document.getElementById('desconto').value || '0',
+    total:      document.getElementById('total').textContent,
+    observacao: document.getElementById('observacao').value,
+    status:     'Pendente',
+    itens:      itens.map(i => ({ nome: i.nome, preco: i.preco, qtd: i.qtd, descricao: i.descricao || '' }))
+  };
+
+  // Salvar localmente
+  const historico = JSON.parse(localStorage.getItem('historico')) || [];
+  historico.unshift({ ...payload, data: new Date().toLocaleString('pt-BR') });
+  localStorage.setItem('historico', JSON.stringify(historico));
+
+  // Enviar para Sheets
+  const res = await apiPost(payload);
+
+  numOrcamento++;
+  localStorage.setItem('numOrcamento', numOrcamento);
+  document.getElementById('numOrcamento').textContent = `ORC #${String(numOrcamento).padStart(3,'0')}`;
+
+  btn.disabled = false;
+  btn.innerHTML = '💾 Salvar + Sincronizar';
+
+  if (res && res.ok) {
+    toast('✅ Orçamento salvo e sincronizado com a planilha!');
+  } else {
+    toast('✅ Salvo localmente (sem conexão com Sheets)');
+  }
+}
+
+// ============================================================
+//  HISTÓRICO
+// ============================================================
+function carregarHistoricoLocal() {
+  const hist = JSON.parse(localStorage.getItem('historico')) || [];
+  const div  = document.getElementById('historico');
+
+  // Stats locais
+  const totalGeral = hist.reduce((a, b) => a + parseFloat(String(b.total).replace(',', '.')) || 0, 0);
+  renderStats({
+    total:    hist.length,
+    valor:    totalGeral,
+    ticket:   hist.length ? totalGeral / hist.length : 0,
+    porStatus: hist.reduce((acc, h) => { acc[h.status||'Pendente'] = (acc[h.status||'Pendente']||0)+1; return acc; }, {})
+  });
+
+  if (hist.length === 0) {
+    div.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">📭 Nenhum orçamento salvo ainda.</div>';
+    return;
+  }
+
+  div.innerHTML = hist.map((h, idx) => `
+    <div class="hist-item">
+      <div>
+        <div class="hist-num">ORC #${String(h.num||'').padStart(3,'0')}</div>
+        <div class="hist-cliente">${h.cliente}</div>
+        <div class="hist-data">📅 ${h.data || ''} ${h.loja ? '· '+h.loja : ''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="text-align:right;">
+          <div class="hist-total">R$ ${h.total}</div>
+          ${h.desconto && h.desconto !== '0' ? `<div style="font-size:0.72rem;color:var(--muted);">Desc: R$ ${h.desconto}</div>` : ''}
+        </div>
+        <select class="status-badge status-${h.status||'Pendente'}"
+          onchange="alterarStatus(${idx}, this.value)"
+          style="font-size:0.68rem;padding:3px 7px;border-radius:20px;font-weight:600;cursor:pointer;border:none;">
+          <option ${h.status==='Pendente' ?'selected':''}>Pendente</option>
+          <option ${h.status==='Aprovado' ?'selected':''}>Aprovado</option>
+          <option ${h.status==='Enviado'  ?'selected':''}>Enviado</option>
+          <option ${h.status==='Recusado' ?'selected':''}>Recusado</option>
+        </select>
+        <button class="btn btn-danger btn-sm" onclick="excluirOrcamento(${idx})">❌</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStats(stats) {
+  const grid = document.getElementById('statsGrid');
+  const valor  = parseFloat(stats.valor) || 0;
+  const ticket = parseFloat(stats.ticket)|| 0;
+  grid.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Orçamentos</div>
+      <div class="stat-value">${stats.total || 0}</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-label">Valor Total</div>
+      <div class="stat-value">R$ ${valor.toFixed(2).replace('.',',')}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Ticket Médio</div>
+      <div class="stat-value">R$ ${ticket.toFixed(2).replace('.',',')}</div>
+    </div>
+    ${stats.porStatus ? Object.entries(stats.porStatus).map(([s,n]) => `
+      <div class="stat-card">
+        <div class="stat-label">${s}</div>
+        <div class="stat-value">${n}</div>
+      </div>`).join('') : ''}
+  `;
+}
+
+async function alterarStatus(idx, novoStatus) {
+  const hist = JSON.parse(localStorage.getItem('historico')) || [];
+  const num  = hist[idx].num;
+  hist[idx].status = novoStatus;
+  localStorage.setItem('historico', JSON.stringify(hist));
+  carregarHistoricoLocal();
+
+  const res = await apiPost({ acao: 'atualizarStatus', num, status: novoStatus });
+  toast(res && res.ok ? `✅ Status atualizado: ${novoStatus}` : `Status atualizado localmente`);
+}
+
+async function excluirOrcamento(idx) {
+  const hist = JSON.parse(localStorage.getItem('historico')) || [];
+  const num  = hist[idx].num;
+  hist.splice(idx, 1);
+  localStorage.setItem('historico', JSON.stringify(hist));
+  carregarHistoricoLocal();
+
+  const res = await apiPost({ acao: 'excluirOrcamento', num });
+  toast(res && res.ok ? '🗑️ Excluído da planilha' : '🗑️ Excluído localmente');
+}
+
+async function limparHistorico() {
+  if (!confirm('Tem certeza? Isso apagará todo o histórico local.')) return;
+  localStorage.removeItem('historico');
+  carregarHistoricoLocal();
+  toast('🗑️ Histórico local limpo');
+}
+
+// ============================================================
+//  MODAL LIMPAR
+// ============================================================
+function abrirModal()  { document.getElementById('modalOverlay').classList.add('open'); }
+function fecharModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function confirmarLimpar() {
+  itens = [];
+  document.getElementById('cliente').value    = '';
+  document.getElementById('observacao').value = '';
+  document.getElementById('desconto').value   = 0;
+  renderTabela();
+  fecharModal();
+  toast('🗑️ Orçamento limpo');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalOverlay')) fecharModal();
+  });
+});
+
+// ============================================================
+//  PDF
+// ============================================================
+function gerarPDF() {
+  const cliente  = document.getElementById('cliente').value || 'Cliente';
+  const loja     = document.getElementById('loja').value || 'Orçamento';
+  const data     = document.getElementById('data').value || '';
+  const obs      = document.getElementById('observacao').value;
+  const num      = document.getElementById('numOrcamento').textContent;
+  const subtotal = document.getElementById('subtotal').textContent;
+  const total    = document.getElementById('total').textContent;
+  const desconto = document.getElementById('desconto').value || '0';
+  const usuario  = document.getElementById('usuario').value;
+
+  const linhas = itens.map((item, i) => `
+    <tr>
+      <td style="padding:9px;border-bottom:1px solid #eee;">${i+1}</td>
+      <td style="padding:9px;border-bottom:1px solid #eee;">${item.nome}${item.descricao ? '<br><small style="color:#888;">'+item.descricao+'</small>' : ''}</td>
+      <td style="padding:9px;border-bottom:1px solid #eee;">R$ ${item.preco.toFixed(2)}</td>
+      <td style="padding:9px;border-bottom:1px solid #eee;">${item.qtd}</td>
+      <td style="padding:9px;border-bottom:1px solid #eee;font-weight:700;">R$ ${(item.preco*item.qtd).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:30px;color:#1a1a2e;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a1a2e;padding-bottom:14px;margin-bottom:22px;">
+        <div>
+          <h1 style="font-size:1.9rem;margin:0;">${loja}</h1>
+          ${usuario ? `<p style="color:#666;margin:3px 0 0;">${usuario}</p>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="background:#e8b84b;color:#1a1a2e;font-weight:700;padding:5px 13px;border-radius:20px;font-size:0.82rem;display:inline-block;">${num}</div>
+          <p style="color:#666;margin:5px 0 0;font-size:0.87rem;">Data: ${data}</p>
+        </div>
+      </div>
+      <div style="background:#f5f4f0;border-radius:7px;padding:12px 16px;margin-bottom:22px;">
+        <strong>CLIENTE:</strong> ${cliente}
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:18px;">
+        <thead>
+          <tr style="background:#1a1a2e;color:white;">
+            <th style="padding:9px;text-align:left;">#</th>
+            <th style="padding:9px;text-align:left;">Produto</th>
+            <th style="padding:9px;text-align:left;">Unit.</th>
+            <th style="padding:9px;text-align:left;">Qtd</th>
+            <th style="padding:9px;text-align:left;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;">
+        <div style="background:#1a1a2e;color:white;border-radius:9px;padding:16px 22px;min-width:210px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;opacity:0.7;font-size:0.88rem;">
+            <span>Subtotal</span><span>R$ ${subtotal}</span>
+          </div>
+          ${parseFloat(desconto)>0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:5px;opacity:0.7;font-size:0.88rem;"><span>Desconto</span><span>- R$ ${desconto}</span></div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-size:1.15rem;font-weight:700;border-top:1px solid rgba(255,255,255,0.2);padding-top:9px;margin-top:5px;">
+            <span>TOTAL</span><span style="color:#e8b84b;">R$ ${total}</span>
+          </div>
+        </div>
+      </div>
+      ${obs ? `<div style="margin-top:22px;border-top:1px solid #ddd;padding-top:14px;color:#666;font-size:0.85rem;"><strong>Observações:</strong> ${obs}</div>` : ''}
+      <div style="margin-top:28px;text-align:center;color:#bbb;font-size:0.72rem;border-top:1px solid #eee;padding-top:14px;">
+        ${new Date().toLocaleString('pt-BR')}
+      </div>
+    </div>
+  `;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:800px;height:1000px;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(`<!DOCTYPE html><html><body>${html}</body></html>`);
+  iframe.contentDocument.close();
+
+  setTimeout(() => {
+    html2pdf().set({
+      margin: 10,
+      filename: `Orcamento_${num.replace('#','')}_${cliente}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(iframe.contentDocument.body.firstChild).save()
+      .then(() => { document.body.removeChild(iframe); toast('📄 PDF gerado!'); });
+  }, 300);
+}
+
+// ============================================================
+//  WHATSAPP
+// ============================================================
+function enviarWhats() {
+  const cliente = document.getElementById('cliente').value || 'Cliente';
+  const loja    = document.getElementById('loja').value;
+  const total   = document.getElementById('total').textContent;
+  const num     = document.getElementById('numOrcamento').textContent;
+  const data    = document.getElementById('data').value;
+
+  let msg = `🧾 *ORÇAMENTO ${num}*\n`;
+  if (loja)  msg += `🏪 ${loja}\n`;
+  msg += `👤 Cliente: *${cliente}*\n`;
+  if (data)  msg += `📅 ${data}\n`;
+  msg += `\n*ITENS:*\n`;
+  itens.forEach((item, i) => {
+    msg += `${i+1}. ${item.nome} — ${item.qtd}x R$ ${item.preco.toFixed(2)} = *R$ ${(item.preco*item.qtd).toFixed(2)}*\n`;
+  });
+  msg += `\n💰 *TOTAL: R$ ${total}*`;
+  const obs = document.getElementById('observacao').value;
+  if (obs) msg += `\n\n📋 ${obs}`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+}
+
+// ============================================================
+//  TOAST
+// ============================================================
+function toast(msg, dur = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+// ============================================================
+//  START
+// ============================================================
+init();
+</script>
+</body>
+</html>
